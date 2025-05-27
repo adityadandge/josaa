@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from pathlib import Path
 
 from bs4 import BeautifulSoup
@@ -51,6 +52,8 @@ def select(_id: str, value: str):
             driver.implicitly_wait(5)
 
 
+options = defaultdict(set)
+
 for round in range(1, 6):
     select("ctl00_ContentPlaceHolder1_ddlYear_chosen", "2024")
     select("ctl00_ContentPlaceHolder1_ddlroundno_chosen", str(round))
@@ -76,9 +79,9 @@ for round in range(1, 6):
     )
 
     soup = BeautifulSoup(html_content, "html.parser")
+    rows = soup.find_all("tr", recursive=True)
 
     data = []
-    rows = soup.find_all("tr", recursive=True)
 
     for row in rows:
         if row.find("th"):
@@ -95,15 +98,19 @@ for round in range(1, 6):
 
             branch_span = cells[1].find("span", id=lambda x: x and "lblBranch" in x)
             row_data["branch"] = branch_span.get_text(strip=True)
+            options["branch"].add(row_data["branch"])
 
-            # quota_span = cells[2].find("span", id=lambda x: x and "lblQuota" in x)
-            # row_data["quota"] = quota_span.get_text(strip=True)
+            quota_span = cells[2].find("span", id=lambda x: x and "lblQuota" in x)
+            row_data["quota"] = quota_span.get_text(strip=True)
+            options["quota"].add(row_data["quota"])
 
             category_span = cells[3].find("span", id=lambda x: x and "lblCategory" in x)
             row_data["category"] = category_span.get_text(strip=True)
+            options["category"].add(row_data["category"])
 
             gender_span = cells[4].find("span", id=lambda x: x and "lblGender" in x)
             row_data["gender"] = gender_span.get_text(strip=True)
+            options["gender"].add(row_data["gender"])
 
             open_rank_span = cells[5].find(
                 "span", id=lambda x: x and "lblOpenRank" in x
@@ -131,3 +138,7 @@ for round in range(1, 6):
     driver.implicitly_wait(10)
 
 driver.close()
+
+options = {k: sorted(v) for k, v in options.items()}
+with (Path(__file__).parent / "opening-and-closing-ranks" / "options").open("w") as f:
+    json.dump(options, f)
